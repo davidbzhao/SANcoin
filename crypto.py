@@ -1,14 +1,20 @@
 import argparse
 import binascii
 import datetime
+import glob
 import hashlib
 import json
+import sys
 
 import rsa
 
-
 LEDGER_FILEPATH = 'test/ledger.txt'
 SPECIAL_ID = 'ashitaka'
+
+
+def hash_string(message):
+    """Produce SHA-256 hash as hex string of given string."""
+    return hash_bytes(message.encode('ascii')).decode('ascii')
 
 
 def hash_bytes(byte_string):
@@ -145,6 +151,56 @@ def verify(wallet_filepath, transaction_filepath):
         add_transaction_to_ledger(transaction)
 
 
+def mine(difficulty):
+    """Clear ledger by finding nonce and creating block."""
+    def get_previous_block_number():
+        block_filepaths = glob.glob('block_*.txt')
+        max_block_number = -1
+        for filepath in block_filepaths:
+            block_number = int(filepath[len('block_'):-len('.txt')])
+            if block_number > max_block_number:
+                max_block_number = block_number
+        return max_block_number
+
+    def get_block_hash(block_filepath):
+        with open(block_filepath, 'r') as infile:
+            prev_block = infile.read()
+            prev_block_hash = hash_string(prev_block)
+        return prev_block_hash
+
+    def get_ledger_contents():
+        with open(LEDGER_FILEPATH, 'r') as infile:
+            return infile.read().strip()
+
+    def add_nonce(next_block_contents, difficulty):
+        for nonce in range(2**64-1):
+            new_block = next_block_contents + str(nonce)
+            new_block_hash = hash_string(new_block)
+            if new_block_hash[:difficulty] == '0' * difficulty:
+                return new_block
+        return None
+
+    def write_block(filepath, contents):
+        with open(filepath, 'w') as outfile:
+            outfile.write(contents)
+
+    def clear_ledger():
+        open(LEDGER_FILEPATH, 'w').close()
+
+    prev_block_number = get_previous_block_number()
+    prev_block_filepath = 'block_{}.txt'.format(prev_block_number)
+    prev_block_hash = get_block_hash(prev_block_filepath)
+    ledger_contents = get_ledger_contents()
+    
+    next_block_number = prev_block_number + 1
+    next_block_filepath = 'block_{}.txt'.format(next_block_number)
+    next_block_contents = prev_block_hash + '\n' + ledger_contents + '\n'
+    next_block_contents = add_nonce(next_block_contents, difficulty)
+    
+    write_block(next_block_filepath, next_block_contents)
+    clear_ledger()
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('action')
@@ -154,6 +210,7 @@ if __name__ == '__main__':
     parser.add_argument('--dest', nargs='?', default=None, help='Destination wallet address')
     parser.add_argument('--out', nargs='?', default=None, help='Out file path')
     parser.add_argument('--amount', nargs='?', default=None, type=int, help='Amount to be transferred')
+    parser.add_argument('--difficulty', nargs='?', default=None, type=int, help='Difficulty setting for mining')
     args = parser.parse_args()
 
     action = args.action
@@ -198,3 +255,7 @@ if __name__ == '__main__':
         if args.transaction == None:
             parser.error('--transaction must be specified')
         verify(wallet_filepath=args.wallet, transaction_filepath=args.transaction)
+    elif action == 'mine':
+        if args.difficulty == None:
+            parser.error('--difficulty must be specified')
+        mine(difficulty=args.difficulty)

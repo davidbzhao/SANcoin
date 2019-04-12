@@ -40,7 +40,7 @@ case "$1" in
 	    # transaction file name
 	    ;;
 
-    mine) echo "mine"
+    mine) python3 crypto.py mine --difficulty $2
 		 # additional parameters provided: difficulty
 		 ;;
     
