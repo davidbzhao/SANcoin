@@ -8,19 +8,19 @@ case "$1" in
 	  # additional parameters provided: (none)
 	  ;;
 
-    genesis) python3 crypto.py genesis --dest block_0.txt
+    genesis) python3 crypto.py genesis --out block_0.txt
 	     # additional parameters provided: (none)
              ;;
 
-    generate) python3 crypto.py generate --dest $2
+    generate) python3 crypto.py generate --out $2
 	      # additional parameters provided: the wallet file name
               ;;
 
-    address) python3 crypto.py address --src $2
+    address) python3 crypto.py address --wallet $2
 	     # additional parameters provided: the file name of the wallet
 	     ;;
 
-    fund) echo "fund"
+    fund) python3 crypto.py fund --wallet $2 --amount $3 --out $4
 	  # additional parameters provided: destination wallet
 	  # address, the amount, and the transaction file name
           ;;

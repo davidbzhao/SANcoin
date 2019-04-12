@@ -4,17 +4,17 @@ import hashlib
 import rsa
 
 
-def genesis(dest):
+def genesis(outfilepath):
     """Generate genesis block in specified file."""
     # TODO: disallow writing to bad place, for example, 'crypto.py'
-    with open(dest, 'w') as outfile:
+    with open(outfilepath, 'w') as outfile:
         outfile.write("Now watch closely, everyone.\n"
             "I'm going to show you how to kill a god.\n"
             "A god of life and death.\n"
             "The trick is not to fear him.")
 
 
-def generate(dest):
+def generate(outfilepath):
     """Generate a new wallet i.e. RSA public/private keyset."""
     # TODO: disallow writing to bad place, for example, 'crypto.py'
     public_key, private_key = rsa.newkeys(1024)
@@ -22,15 +22,15 @@ def generate(dest):
     private_key_bytes = private_key.save_pkcs1(format='PEM')
     public_key_string = public_key_bytes.decode('ascii')
     private_key_string = private_key_bytes.decode('ascii')
-    with open(dest, 'w') as outfile:
+    with open(outfilepath, 'w') as outfile:
         outfile.write(public_key_string)
         outfile.write(private_key_string)
 
 
 
-def address(src):
+def address(wallet_filepath):
     """Return address of wallet."""
-    with open(src, 'r') as infile:
+    with open(wallet_filepath, 'r') as infile:
         data = infile.read()
         public_key = rsa.PublicKey.load_pkcs1(data)
         public_key_bytes = public_key.save_pkcs1(format='PEM')
@@ -46,21 +46,24 @@ def address(src):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('action')
-    parser.add_argument('--src', nargs='?', default=None)
-    parser.add_argument('--dest', nargs='?', default=None)
+    parser.add_argument('--wallet', nargs='?', default=None, help='Wallet file path')
+    parser.add_argument('--out', nargs='?', default=None, help='Out file path')
+    parser.add_argument('--amount', nargs='?', default=None, type=int, help='Amount to be transferred')
     args = parser.parse_args()
 
     action = args.action
     if action == 'genesis':
-        if args.dest == None:
-            parser.error('--dest must be specified')
-        genesis(dest=args.dest)
+        if args.out == None:
+            parser.error('--out must be specified')
+        genesis(outfilepath=args.out)
     elif action == 'generate':
-        if args.dest == None:
-            parser.error('--dest must be specified')
-        generate(dest=args.dest)
+        if args.out == None:
+            parser.error('--out must be specified')
+        generate(outfilepath=args.out)
     elif action == 'address':
-        if args.src == None:
-            parser.error('--src must be specified')
-        addr = address(src=args.src)
+        if args.wallet == None:
+            parser.error('--wallet must be specified')
+        addr = address(wallet_filepath=args.wallet)
         print(addr)
+    elif action == 'fund':
+        pass
