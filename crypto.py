@@ -1,7 +1,40 @@
 import argparse
 import binascii
+import datetime
 import hashlib
+import json
+
 import rsa
+
+
+SPECIAL_ID = 'ashitaka'
+
+
+def hash_bytes(byte_string):
+    """Produce SHA-256 hash in hex of given byte string."""
+    hasher = hashlib.sha256()
+    hasher.update(byte_string)
+    hex_hash = binascii.hexlify(hasher.digest())
+    return hex_hash
+
+
+def sign_string(message, private_key):
+    """Get encrypted hash of message string."""
+    message_bytes = message.encode('ascii')
+    hex_hash_bytes = hash_bytes(message_bytes)
+    encoded_signature = rsa.sign(hex_hash_bytes, private_key, 'SHA-256')
+    hex_signature_string = binascii.hexlify(encoded_signature).decode('ascii')
+    return hex_signature_string
+
+
+def get_keys_from_file(infilepath):
+    """Get RSA keyset from file."""
+    with open(infilepath, 'r') as infile:
+        data = infile.read()
+        public_key = rsa.PublicKey.load_pkcs1(data)
+        private_key = rsa.PrivateKey.load_pkcs1(data)
+    return public_key, private_key
+
 
 
 def genesis(outfilepath):
@@ -35,18 +68,46 @@ def address(wallet_filepath):
         public_key = rsa.PublicKey.load_pkcs1(data)
         public_key_bytes = public_key.save_pkcs1(format='PEM')
 
-        hasher = hashlib.sha256()
-        hasher.update(public_key_bytes)
-        hex_hash = binascii.hexlify(hasher.digest())
-        hex_hash_string = hex_hash.decode('ascii')
+        hex_hash_string = hash_bytes(public_key_bytes).decode('ascii')
         wallet_address = hex_hash_string[:16]
-    return wallet_address        
+    return wallet_address
+
+
+def fund(dest_wallet_addr, amount, outfilepath):
+    """Add some amount of value to a wallet."""
+    return transfer(SPECIAL_ID, dest_wallet_addr, amount, outfilepath)
+
+
+def transfer(src_wallet_filepath, dest_wallet_addr, amount, outfilepath):
+    """Transfer some amount of value from one wallet to another."""
+    transaction = {
+        'from': SPECIAL_ID,
+        'to': dest_wallet_addr,
+        'amount': amount,
+        'date': datetime.datetime.now().ctime(),
+        'signature': 'Save the forest'
+    }
+    if src_wallet_filepath != SPECIAL_ID:
+        _, private_key = get_keys_from_file(src_wallet_filepath)
+        transaction_string = json.dumps(transaction)
+        transaction['signature'] = sign_string(transaction_string, private_key)
+        transaction['from'] = address(src_wallet_filepath)
+
+    with open(outfilepath, 'w') as outfile:
+        outfile.write(json.dumps(transaction, indent=4, sort_keys=True))
+
+
+def balance(wallet_filepath):
+    """Compute the available balance of a wallet."""
+    return 1000000
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('action')
-    parser.add_argument('--wallet', nargs='?', default=None, help='Wallet file path')
+    parser.add_argument('--wallet', nargs='?', default=None, help='Wallet filepath')
+    parser.add_argument('--src', nargs='?', default=None, help='Source wallet filepath')
+    parser.add_argument('--dest', nargs='?', default=None, help='Destination wallet address')
     parser.add_argument('--out', nargs='?', default=None, help='Out file path')
     parser.add_argument('--amount', nargs='?', default=None, type=int, help='Amount to be transferred')
     args = parser.parse_args()
@@ -66,4 +127,24 @@ if __name__ == '__main__':
         addr = address(wallet_filepath=args.wallet)
         print(addr)
     elif action == 'fund':
-        pass
+        if args.dest == None:
+            parser.error('--dest must be specified')
+        if args.out == None:
+            parser.error('--out must be specified')
+        if args.amount == None:
+            parser.error('--amount must be specified')
+        fund(args.dest, args.amount, args.out)
+    elif action == 'transfer':
+        if args.src == None:
+            parser.error('--src must be specified')
+        if args.dest == None:
+            parser.error('--dest must be specified')
+        if args.out == None:
+            parser.error('--out must be specified')
+        if args.amount == None:
+            parser.error('--amount must be specified')
+        transfer(args.src, args.dest, args.amount, args.out)
+    elif action == 'address':
+        if args.wallet == None:
+            parser.error('--wallet must be specified')
+        balance(wallet_filepath=args.wallet)

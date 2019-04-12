@@ -20,18 +20,18 @@ case "$1" in
 	     # additional parameters provided: the file name of the wallet
 	     ;;
 
-    fund) python3 crypto.py fund --wallet $2 --amount $3 --out $4
+    fund) python3 crypto.py fund --dest $2 --amount $3 --out $4
 	  # additional parameters provided: destination wallet
 	  # address, the amount, and the transaction file name
           ;;
 
-    transfer) echo "transfer"
+    transfer) python3 crypto.py transfer --src $2 --dest $3 --amount $4 --out $5
 	      # additional parameters provided: source wallet file
 	      # name, destination address, amount, and the transaction
 	      # file name
 	      ;;
 
-    balance) echo "balance"
+    balance) python3 crypto.py balance --wallet $2
 	     # additional parameters provided: wallet address
 	     ;;
 
