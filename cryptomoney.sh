@@ -12,7 +12,7 @@ case "$1" in
 	     # additional parameters provided: (none)
              ;;
 
-    generate) echo "generate"
+    generate) python3 crypto.py generate --out $2
 	      # additional parameters provided: the wallet file name
               ;;
 
