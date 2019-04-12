@@ -134,3 +134,4 @@ dmypy.json
 
 # Project
 test/
+block_*[1-9]*.txt

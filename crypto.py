@@ -102,6 +102,9 @@ def address(wallet_filepath):
     Returns:
         str: The wallet address.
     """
+    if not os.path.isfile(wallet_filepath):
+        return None
+
     with open(wallet_filepath, 'r') as infile:
         data = infile.read()
         public_key = rsa.PublicKey.load_pkcs1(data)
@@ -215,6 +218,10 @@ def verify(wallet_filepath, transaction_filepath):
             return False
         return True
 
+    if not os.path.isfile(wallet_filepath) and wallet_filepath != SPECIAL_ID:
+        return False
+    if not os.path.isfile(transaction_filepath):
+        return False
     with open(transaction_filepath, 'r') as infile:
         transaction = json.load(infile)
     if wallet_filepath == SPECIAL_ID or is_valid_transaction(transaction):
@@ -363,7 +370,10 @@ if __name__ == '__main__':
         if args.wallet == None:
             parser.error('--wallet must be specified')
         addr = address(wallet_filepath=args.wallet)
-        print(addr)
+        if addr:
+            print(addr)
+        else:
+            print('[FAILURE] Wallet ({}) not found'.format(args.wallet))
     elif action == 'fund':
         if args.dest == None:
             parser.error('--dest must be specified')
