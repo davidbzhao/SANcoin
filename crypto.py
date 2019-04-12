@@ -4,6 +4,7 @@ import datetime
 import glob
 import hashlib
 import json
+import os
 import sys
 
 import rsa
@@ -124,6 +125,24 @@ def transfer(src_wallet_filepath, dest_wallet_addr, amount, outfilepath):
 def balance(wallet_addr):
     """Compute the available balance of a wallet."""
     balance = 0
+
+    filepaths_to_check = glob.glob('block_*[1-9]*.txt')  # except block_0.txt
+    if os.path.isfile(LEDGER_FILEPATH):
+        filepaths_to_check.append(LEDGER_FILEPATH)
+
+    for filepath in filepaths_to_check:
+        with open(filepath, 'r') as infile:
+            for line in infile.readlines():
+                if line[0] != '{':
+                    continue
+
+                transaction = json.loads(line)
+                amount = transaction['amount']
+                # If you want to send money to yourself, go for it
+                if transaction['from'] == wallet_addr:
+                    balance -= amount
+                if transaction['to'] == wallet_addr:
+                    balance += amount
     return balance
 
 
