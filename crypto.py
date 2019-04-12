@@ -171,6 +171,38 @@ def verify(wallet_filepath, transaction_filepath):
         add_transaction_to_ledger(transaction)
 
 
+def validate():
+    """Check the hashes of each block in the chain."""
+    def compute_hash_of_block(block_number):
+        block_filepath = 'block_{}.txt'.format(block_number)
+        with open(block_filepath, 'r') as infile:
+            computed_hash = hash_string(infile.read())
+        return computed_hash
+
+    def get_recorded_hash_in_block(block_number):
+        block_filepath = 'block_{}.txt'.format(block_number)
+        with open(block_filepath, 'r') as infile:
+            recorded_hash = infile.readline().strip()
+        return recorded_hash
+
+    def does_block_exist(block_number):
+        block_filepath = 'block_{}.txt'.format(block_number)
+        return os.path.isfile(block_filepath)
+
+
+    block_number = 0
+    while True:
+        if block_number > 0:
+            if not does_block_exist(block_number):
+                break
+            recorded_hash = get_recorded_hash_in_block(block_number)
+            computed_hash = compute_hash_of_block(block_number - 1)
+            if computed_hash != recorded_hash:
+                return False
+        block_number += 1
+    return True
+
+
 def mine(difficulty):
     """Clear ledger by finding nonce and creating block."""
     def is_ledger_empty():
@@ -285,3 +317,5 @@ if __name__ == '__main__':
         if args.difficulty == None:
             parser.error('--difficulty must be specified')
         mine(difficulty=args.difficulty)
+    elif action == 'validate':
+        print(validate())

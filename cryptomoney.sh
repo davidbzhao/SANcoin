@@ -44,7 +44,7 @@ case "$1" in
 		 # additional parameters provided: difficulty
 		 ;;
     
-    validate) echo "validate"
+    validate) python3 crypto.py validate
 	      # additional parameters provided: (none)
 	      ;;
 
