@@ -31,7 +31,7 @@ case "$1" in
 	      # file name
 	      ;;
 
-    balance) python3 crypto.py balance --wallet $2
+    balance) python3 crypto.py balance --address $2
 	     # additional parameters provided: wallet address
 	     ;;
 

@@ -55,13 +55,9 @@ def get_keys_from_file(infilepath):
 
 def add_transaction_to_ledger(transaction):
     """Write transaction record to ledger from transaction object."""
+    transaction.pop('signature', None)
     with open(LEDGER_FILEPATH, 'a') as outfile:
-        outfile.write('{} transferred {} to {} on {}\n'.format(
-            transaction['from'],
-            transaction['amount'],
-            transaction['to'],
-            transaction['date']
-            ))
+        outfile.write(json.dumps(transaction, sort_keys=True) + '\n')
 
 
 def genesis(outfilepath):
@@ -125,15 +121,20 @@ def transfer(src_wallet_filepath, dest_wallet_addr, amount, outfilepath):
         outfile.write(json.dumps(transaction, indent=4, sort_keys=True))
 
 
-def balance(wallet_filepath):
+def balance(wallet_addr):
     """Compute the available balance of a wallet."""
-    return 1000000
+    balance = 0
+    return balance
 
 
 def verify(wallet_filepath, transaction_filepath):
     """Verify transaction with given wallet credentials."""
-    def is_valid_transaction(transaction):        
-        if not (0 < transaction['amount'] <= balance(wallet_filepath)):
+    def is_valid_transaction(transaction):
+        if transaction['from'] == SPECIAL_ID:
+            return True
+
+        wallet_addr = address(wallet_filepath)
+        if not (0 < transaction['amount'] <= balance(wallet_addr)):
             return False
 
         public_key, _ = get_keys_from_file(wallet_filepath)
@@ -153,6 +154,10 @@ def verify(wallet_filepath, transaction_filepath):
 
 def mine(difficulty):
     """Clear ledger by finding nonce and creating block."""
+    def is_ledger_empty():
+        with open(LEDGER_FILEPATH, 'r') as infile:
+            return infile.read().strip() == ''
+
     def get_previous_block_number():
         block_filepaths = glob.glob('block_*.txt')
         max_block_number = -1
@@ -187,24 +192,26 @@ def mine(difficulty):
     def clear_ledger():
         open(LEDGER_FILEPATH, 'w').close()
 
-    prev_block_number = get_previous_block_number()
-    prev_block_filepath = 'block_{}.txt'.format(prev_block_number)
-    prev_block_hash = get_block_hash(prev_block_filepath)
-    ledger_contents = get_ledger_contents()
-    
-    next_block_number = prev_block_number + 1
-    next_block_filepath = 'block_{}.txt'.format(next_block_number)
-    next_block_contents = prev_block_hash + '\n' + ledger_contents + '\n'
-    next_block_contents = add_nonce(next_block_contents, difficulty)
-    
-    write_block(next_block_filepath, next_block_contents)
-    clear_ledger()
+    if not is_ledger_empty():
+        prev_block_number = get_previous_block_number()
+        prev_block_filepath = 'block_{}.txt'.format(prev_block_number)
+        prev_block_hash = get_block_hash(prev_block_filepath)
+        ledger_contents = get_ledger_contents()
+        
+        next_block_number = prev_block_number + 1
+        next_block_filepath = 'block_{}.txt'.format(next_block_number)
+        next_block_contents = prev_block_hash + '\n' + ledger_contents + '\n'
+        next_block_contents = add_nonce(next_block_contents, difficulty)
+        
+        write_block(next_block_filepath, next_block_contents)
+        clear_ledger()
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('action')
     parser.add_argument('--wallet', nargs='?', default=None, help='Wallet filepath')
+    parser.add_argument('--address', nargs='?', default=None, help='Wallet address')
     parser.add_argument('--transaction', nargs='?', default=None, help='Transaction filepath')
     parser.add_argument('--src', nargs='?', default=None, help='Source wallet filepath')
     parser.add_argument('--dest', nargs='?', default=None, help='Destination wallet address')
@@ -246,9 +253,9 @@ if __name__ == '__main__':
             parser.error('--amount must be specified')
         transfer(args.src, args.dest, args.amount, args.out)
     elif action == 'balance':
-        if args.wallet == None:
-            parser.error('--wallet must be specified')
-        balance(wallet_filepath=args.wallet)
+        if args.address == None:
+            parser.error('--address must be specified')
+        print(balance(wallet_addr=args.address))
     elif action == 'verify':
         if args.wallet == None:
             parser.error('--wallet must be specified')
