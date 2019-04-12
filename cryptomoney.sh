@@ -35,7 +35,7 @@ case "$1" in
 	     # additional parameters provided: wallet address
 	     ;;
 
-    verify) echo "verify"
+    verify) python3 crypto.py verify --wallet $2 --transaction $3
 	    # additional parameters provided: wallet file name,
 	    # transaction file name
 	    ;;

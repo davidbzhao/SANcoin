@@ -7,6 +7,7 @@ import json
 import rsa
 
 
+LEDGER_FILEPATH = 'test/ledger.txt'
 SPECIAL_ID = 'ashitaka'
 
 
@@ -27,6 +28,15 @@ def sign_string(message, private_key):
     return hex_signature_string
 
 
+def verify_signature(message, signature, public_key):
+    """Verify signature of message string given signature string."""
+    message_bytes = message.encode('ascii')
+    hex_hash_bytes = hash_bytes(message_bytes)
+    signature_bytes = signature.encode('ascii')
+    signature_encoded = binascii.a2b_hex(signature_bytes)
+    rsa.verify(hex_hash_bytes, signature_encoded, public_key)
+
+
 def get_keys_from_file(infilepath):
     """Get RSA keyset from file."""
     with open(infilepath, 'r') as infile:
@@ -35,6 +45,17 @@ def get_keys_from_file(infilepath):
         private_key = rsa.PrivateKey.load_pkcs1(data)
     return public_key, private_key
 
+
+
+def add_transaction_to_ledger(transaction):
+    """Write transaction record to ledger from transaction object."""
+    with open(LEDGER_FILEPATH, 'a') as outfile:
+        outfile.write('{} transferred {} to {} on {}\n'.format(
+            transaction['from'],
+            transaction['amount'],
+            transaction['to'],
+            transaction['date']
+            ))
 
 
 def genesis(outfilepath):
@@ -84,14 +105,15 @@ def transfer(src_wallet_filepath, dest_wallet_addr, amount, outfilepath):
         'from': SPECIAL_ID,
         'to': dest_wallet_addr,
         'amount': amount,
-        'date': datetime.datetime.now().ctime(),
-        'signature': 'Save the forest'
+        'date': datetime.datetime.now().ctime()
     }
-    if src_wallet_filepath != SPECIAL_ID:
-        _, private_key = get_keys_from_file(src_wallet_filepath)
-        transaction_string = json.dumps(transaction)
-        transaction['signature'] = sign_string(transaction_string, private_key)
+    if src_wallet_filepath == SPECIAL_ID:
+        transaction['signature'] = 'Save the forest'
+    else:
         transaction['from'] = address(src_wallet_filepath)
+        _, private_key = get_keys_from_file(src_wallet_filepath)
+        transaction_string = json.dumps(transaction, sort_keys=True)
+        transaction['signature'] = sign_string(transaction_string, private_key)
 
     with open(outfilepath, 'w') as outfile:
         outfile.write(json.dumps(transaction, indent=4, sort_keys=True))
@@ -102,10 +124,32 @@ def balance(wallet_filepath):
     return 1000000
 
 
+def verify(wallet_filepath, transaction_filepath):
+    """Verify transaction with given wallet credentials."""
+    def is_valid_transaction(transaction):        
+        if not (0 < transaction['amount'] <= balance(wallet_filepath)):
+            return False
+
+        public_key, _ = get_keys_from_file(wallet_filepath)
+        signature = transaction.pop('signature', None)
+        transaction_string = json.dumps(transaction, sort_keys=True)
+        try:
+            verify_signature(transaction_string, signature, public_key)
+        except rsa.pkcs1.VerificationError as e:
+            return False
+        return True
+    
+    with open(transaction_filepath, 'r') as infile:
+        transaction = json.load(infile)
+    if wallet_filepath == SPECIAL_ID or is_valid_transaction(transaction):
+        add_transaction_to_ledger(transaction)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('action')
     parser.add_argument('--wallet', nargs='?', default=None, help='Wallet filepath')
+    parser.add_argument('--transaction', nargs='?', default=None, help='Transaction filepath')
     parser.add_argument('--src', nargs='?', default=None, help='Source wallet filepath')
     parser.add_argument('--dest', nargs='?', default=None, help='Destination wallet address')
     parser.add_argument('--out', nargs='?', default=None, help='Out file path')
@@ -144,7 +188,13 @@ if __name__ == '__main__':
         if args.amount == None:
             parser.error('--amount must be specified')
         transfer(args.src, args.dest, args.amount, args.out)
-    elif action == 'address':
+    elif action == 'balance':
         if args.wallet == None:
             parser.error('--wallet must be specified')
         balance(wallet_filepath=args.wallet)
+    elif action == 'verify':
+        if args.wallet == None:
+            parser.error('--wallet must be specified')
+        if args.transaction == None:
+            parser.error('--transaction must be specified')
+        verify(wallet_filepath=args.wallet, transaction_filepath=args.transaction)
