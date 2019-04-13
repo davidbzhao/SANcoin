@@ -120,7 +120,7 @@ def fund(dest_wallet_addr, amount, outfilepath):
 
     Args:
         dest_wallet_addr (str): Address of receiving wallet
-        amount (int): Address of wallet
+        amount (float): Address of wallet
         outfilepath (str): Location to write transaction file  
 
     Returns:
@@ -135,7 +135,7 @@ def transfer(src_wallet_filepath, dest_wallet_addr, amount, outfilepath):
     Args:
         src_wallet_filepath (str): Path to sending wallet
         dest_wallet_addr (str): Address of receiving wallet
-        amount (int): Address of wallet
+        amount (float): Address of wallet
         outfilepath (str): Location to write transaction file  
 
     Returns:
@@ -167,7 +167,7 @@ def balance(wallet_addr):
         wallet_addr (str): Address of wallet
 
     Returns:
-        int: The current value of wallet.
+        float: The current value of wallet.
     """
     balance = 0
 
@@ -350,7 +350,7 @@ if __name__ == '__main__':
                         help='Destination wallet address')
     parser.add_argument('--out', nargs='?', default=None, help='Out file path')
     parser.add_argument('--amount', nargs='?', default=None,
-                        type=int, help='Amount to be transferred')
+                        type=float, help='Amount to be transferred')
     parser.add_argument('--difficulty', nargs='?', default=None,
                         type=int, help='Difficulty setting for mining')
     args = parser.parse_args()
